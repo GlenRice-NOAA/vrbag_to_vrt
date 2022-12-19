@@ -14,27 +14,17 @@ def vrbag_to_vrt(infilename:str):
     GeoTIFFs and build a VRT.
     ToDo : Building overviews does not appear to work?
     """
-    
-    vrt_folder, ext = os.path.splitext(infilename)
-    # Export the super cells to GeoTIFFs
-    if os.path.exists(vrt_folder):
-        flist = glob(vrt_folder + '/*.tif')
-        print(f'VRT directory found to contain {len(flist)} GeoTIFFs')
-    else:
-        os.mkdir(vrt_folder)
-        ds = gdal.OpenEx(infilename, open_options=["MODE=LIST_SUPERGRIDS"])
-        subds = ds.GetSubDatasets()
-        flist = []
-        for sg in subds:
-            sg_parts = sg[0].split(':')
-            sg_name = f'sg-{sg_parts[-2]}-{sg_parts[-1]}.tif'
-            outfilename = os.path.join(vrt_folder, sg_name)
-            gdal.Translate(outfilename, sg[0])
-            flist.append(outfilename)
-        print(f'Created VRT directory with {len(flist)} GeoTIFFs')
-        del ds
+    path, bag_name = os.path.split(infilename)
+    # get the paths to the
+    ds = gdal.OpenEx(infilename, open_options=["MODE=LIST_SUPERGRIDS"])
+    subds = ds.GetSubDatasets()
+    flist = []
+    for sg in subds:
+        subgroupname = os.path.join(path, sg[0])
+        flist.append(subgroupname)
+    del ds
     # Build the VRT
-    vrt_path = vrt_folder + '.vrt'
+    vrt_path = infilename + '.vrt'
     vrt = gdal.BuildVRT(vrt_path, flist, resampleAlg='near', resolution="highest")
     band1 = vrt.GetRasterBand(1)
     band1.SetDescription('Elevation')
@@ -48,7 +38,8 @@ def vrbag_to_vrt(infilename:str):
 
 def main(infilename):
     vrbag_to_vrt(infilename)
-    
+
+
 if __name__=='__main__':
     if len(sys.argv) > 1:
         infilename = sys.argv[1]
